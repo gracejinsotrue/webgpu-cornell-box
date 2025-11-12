@@ -1,7 +1,8 @@
-// shaders/basic.wgsl
+// src/shaders/basic.wgsl
 
 struct Uniforms {
     modelViewProjection: mat4x4<f32>,
+    cameraPosition: vec3<f32>,
 };
 
 @group(0) @binding(0) var<uniform> uniforms: Uniforms;
@@ -31,13 +32,28 @@ fn vertexMain(input: VertexInput) -> VertexOutput {
 
 @fragment
 fn fragmentMain(input: VertexOutput) -> @location(0) vec4<f32> {
-    //for lighting 
-    let lightPos = vec3<f32>(0.0, 0.9, 0.0); //  ceiling light 
+    // cieling light position
+    let lightPos = vec3<f32>(0.0, 0.99, 0.0);
+    let lightColor = vec3<f32>(1.0, 1.0, 0.9);
+    let lightIntensity = 2.0;
+
     let lightDir = normalize(lightPos - input.worldPos);
-    let diffuse = max(dot(input.normal, lightDir), 0.0);
+    let normal = normalize(input.normal);
     
-    let ambient = 0.3;
-    let lighting = ambient + diffuse * 0.7;
+    // definition of diffuse lighting 
+    let diffuse = max(dot(normal, lightDir), 0.0);
     
-    return vec4(input.color * lighting, 1.0);
+    // aistance attenuation
+    let distance = length(lightPos - input.worldPos);
+    let attenuation = 1.0 / (1.0 + 0.5 * distance * distance);
+    
+    // for ambient lighting
+    //todo: tweak if it looks like shit
+    let ambient = 0.2;
+    
+    //overall lighting is the sum of the different lightings
+    let lighting = ambient + diffuse * attenuation * lightIntensity;
+    let finalColor = input.color * lighting * lightColor;
+    
+    return vec4<f32>(finalColor, 1.0);
 }

@@ -1,63 +1,113 @@
-// scene.ts - Cornell Box vertices
-export function createCornellBox() {
-    // each wall is 2 triangles therefore 6 verticies per wall
+// src/scene.ts
+/// <reference types="@webgpu/types" />
 
-    // white floor
-    const floor = [
-        // pos (xyz), normal (xyz), color (rgb)
-        -1, -1, -1, 0, 1, 0, 0.73, 0.73, 0.73,  // bottom-left
-        1, -1, -1, 0, 1, 0, 0.73, 0.73, 0.73,  // bottom-right
-        1, -1, 1, 0, 1, 0, 0.73, 0.73, 0.73,  // top-right
-        -1, -1, 1, 0, 1, 0, 0.73, 0.73, 0.73,  // top-left
-    ];
+//      ─────────┐
+//     ╱  +Y    ╱│
+//    ┌────────┐ │
+//    │        │+X
+//    │   +Z   │ │
+//    │        │╱
+//    └────────┘
 
-    // white celing
-    const ceiling = [
-        -1, 1, -1, 0, -1, 0, 0.73, 0.73, 0.73,
-        1, 1, -1, 0, -1, 0, 0.73, 0.73, 0.73,
-        1, 1, 1, 0, -1, 0, 0.73, 0.73, 0.73,
-        -1, 1, 1, 0, -1, 0, 0.73, 0.73, 0.73,
-    ];
+export interface SceneGeometry {
+    vertices: Float32Array;
+    indices: Uint16Array;
+    vertexCount: number;
+    indexCount: number;
+}
 
-    // white back wall
-    const backWall = [
-        -1, -1, -1, 0, 0, 1, 0.73, 0.73, 0.73,
-        1, -1, -1, 0, 0, 1, 0.73, 0.73, 0.73,
-        1, 1, -1, 0, 0, 1, 0.73, 0.73, 0.73,
-        -1, 1, -1, 0, 0, 1, 0.73, 0.73, 0.73,
-    ];
+export function createCornellBox(): SceneGeometry {
+    // my vertex format is in th form: [x, y, z, nx, ny, nz, r, g, b]
+    // position (3) + normal (3) + color (3) = 9 floats per vertex
 
-    // red left wall
-    const leftWall = [
-        -1, -1, -1, 1, 0, 0, 0.65, 0.05, 0.05,
-        -1, -1, 1, 1, 0, 0, 0.65, 0.05, 0.05,
-        -1, 1, 1, 1, 0, 0, 0.65, 0.05, 0.05,
-        -1, 1, -1, 1, 0, 0, 0.65, 0.05, 0.05,
-    ];
+    const vertices: number[] = [];
+    const indices: number[] = [];
+    let indexOffset = 0;
 
-    // green right wall
-    const rightWall = [
-        1, -1, -1, -1, 0, 0, 0.12, 0.45, 0.15,
-        1, -1, 1, -1, 0, 0, 0.12, 0.45, 0.15,
-        1, 1, 1, -1, 0, 0, 0.12, 0.45, 0.15,
-        1, 1, -1, -1, 0, 0, 0.12, 0.45, 0.15,
-    ];
+    // add quads tgt, two triangles for now
+    function addQuad(
+        v0: number[], v1: number[], v2: number[], v3: number[],
+        normal: number[],
+        color: number[]
+    ) {
+        // add 4 vertice s
+        for (const v of [v0, v1, v2, v3]) {
+            vertices.push(...v, ...normal, ...color);
+        }
 
-    // indices for each quad 
-    // each quad also composed of 2 triangles
-    const indices = [
-        // each quad uses the same index pattern
-        0, 1, 2, 0, 2, 3,  // floor
-        4, 5, 6, 4, 6, 7,  // ceiling
-        8, 9, 10, 8, 10, 11, // back
-        12, 13, 14, 12, 14, 15, // left
-        16, 17, 18, 16, 18, 19, // right
-    ];
+        //  adding 2 triangles means 6 indicies
+        indices.push(
+            indexOffset + 0, indexOffset + 1, indexOffset + 2,
+            indexOffset + 0, indexOffset + 2, indexOffset + 3
+        );
+        indexOffset += 4;
+    }
+
+    const white = [0.73, 0.73, 0.73];
+    const red = [0.65, 0.05, 0.05];
+    const green = [0.12, 0.45, 0.15];
+    const lightColor = [1.0, 1.0, 1.0];
+
+    //      ─────────┐
+    //     ╱  +Y    ╱│
+    //    ┌────────┐ │
+    //    │        │+X
+    //    │   +Z   │ │
+    //    │        │╱
+    //    └────────┘
+
+    // floor (white) - Y = -1
+    addQuad(
+        [-1, -1, -1], [1, -1, -1], [1, -1, 1], [-1, -1, 1],
+        [0, 1, 0],
+        white
+    );
+
+    // ceiling (white) - Y = 1
+    addQuad(
+        [-1, 1, -1], [-1, 1, 1], [1, 1, 1], [1, 1, -1],
+        [0, -1, 0],
+        white
+    );
+
+    // back wall (white) 
+    // - Z = -1
+    addQuad(
+        [-1, -1, -1], [-1, 1, -1], [1, 1, -1], [1, -1, -1],
+        [0, 0, 1],
+        white
+    );
+
+    // left wall (red) - X = -1
+    addQuad(
+        [-1, -1, -1], [-1, -1, 1], [-1, 1, 1], [-1, 1, -1],
+        [1, 0, 0],
+        red
+    );
+
+    // Right wall (green) - X = 1
+    addQuad(
+        [1, -1, -1], [1, 1, -1], [1, 1, 1], [1, -1, 1],
+        [-1, 0, 0],
+        green
+    );
+
+    // the light on the ceiling is in the shape of
+    //a smaller white quad
+    const lightSize = 0.3;
+    addQuad(
+        [-lightSize, 0.99, -lightSize],
+        [lightSize, 0.99, -lightSize],
+        [lightSize, 0.99, lightSize],
+        [-lightSize, 0.99, lightSize],
+        [0, -1, 0],
+        lightColor
+    );
 
     return {
-        vertices: new Float32Array([
-            ...floor, ...ceiling, ...backWall, ...leftWall, ...rightWall
-        ]),
-        indices: new Uint16Array(indices)
+        vertices: new Float32Array(vertices),
+        indices: new Uint16Array(indices),
+        vertexCount: vertices.length / 9,
+        indexCount: indices.length
     };
 }
